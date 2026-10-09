@@ -6,6 +6,7 @@ const NAV = [
   { href: "/#how", label: "使用流程" },
   { href: "/#sample", label: "建議單範例" },
   { href: "/#faq", label: "常見問題" },
+  { href: "/settings", label: "設定" },
 ];
 
 export function SiteHeader() {
@@ -77,6 +78,7 @@ export function SiteFooter() {
             links={[
               { href: "/#how", label: "使用流程" },
               { href: "/#faq", label: "常見問題" },
+              { href: "/settings", label: "設定 API Key" },
             ]}
           />
         </div>

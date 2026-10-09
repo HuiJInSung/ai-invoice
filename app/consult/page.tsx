@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useState, useSyncExternalStore } from "react";
+import { API_KEY_HEADER, getApiKey, subscribeApiKey } from "../_components/api-key";
 import {
   ClerkAvatar,
   PAPER_SHADOW,
@@ -26,18 +28,28 @@ export default function ConsultPage() {
   const [finished, setFinished] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [keyError, setKeyError] = useState(false);
+  const apiKey = useSyncExternalStore(subscribeApiKey, getApiKey, () => null);
 
   async function ask(history: ChatMessage[]) {
     setLoading(true);
     setError("");
+    setKeyError(false);
     try {
+      const key = getApiKey();
       const res = await fetch("/invoice", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(key && { [API_KEY_HEADER]: key }),
+        },
         body: JSON.stringify({ description, messages: history }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "發生錯誤");
+      if (!res.ok) {
+        setKeyError(data.code === "missing_key" || data.code === "invalid_key");
+        throw new Error(data.error ?? "發生錯誤");
+      }
 
       setMessages([...history, { role: "clerk", content: data.content }]);
       if (data.type === "closing") setFinished(true);
@@ -73,6 +85,7 @@ export default function ConsultPage() {
     setAnswer("");
     setFinished(false);
     setError("");
+    setKeyError(false);
   }
 
   const waitingForAnswer =
@@ -125,6 +138,14 @@ export default function ConsultPage() {
         <div className="mt-10 space-y-12">
           {!started ? (
             <section className="rise space-y-10">
+              {!apiKey && (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-l-2 border-stamp bg-stamp-light/60 px-4 py-3 text-sm text-stamp">
+                  <span>開始諮詢前，請先設定你自己的 OpenAI API Key。</span>
+                  <Link href="/settings" className="font-medium underline-offset-4 hover:underline">
+                    前往設定 →
+                  </Link>
+                </div>
+              )}
               <div className={`rounded-sm bg-paper p-6 sm:p-8 ${PAPER_SHADOW}`}>
                 <label
                   htmlFor="description"
@@ -144,7 +165,7 @@ export default function ConsultPage() {
                   className="ruled mt-4 w-full resize-none bg-transparent leading-8 text-ink placeholder:text-ink-soft/50 focus:outline-none"
                 />
                 <div className="mt-6 flex justify-end">
-                  <PrimaryButton onClick={start} disabled={!description.trim()}>
+                  <PrimaryButton onClick={start} disabled={!description.trim() || !apiKey}>
                     開始諮詢
                   </PrimaryButton>
                 </div>
@@ -228,9 +249,16 @@ export default function ConsultPage() {
               {error && (
                 <div className="mt-6 flex items-center justify-between border-l-2 border-stamp bg-stamp-light/60 px-4 py-3 text-sm text-stamp">
                   <span>{error}</span>
-                  <button onClick={retry} className="font-medium underline-offset-4 hover:underline">
-                    重試
-                  </button>
+                  <span className="flex shrink-0 gap-4">
+                    {keyError && (
+                      <Link href="/settings" className="font-medium underline-offset-4 hover:underline">
+                        前往設定
+                      </Link>
+                    )}
+                    <button onClick={retry} className="font-medium underline-offset-4 hover:underline">
+                      重試
+                    </button>
+                  </span>
                 </div>
               )}
 

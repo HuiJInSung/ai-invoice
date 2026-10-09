@@ -72,11 +72,12 @@ export async function POST(request: Request) {
     return Response.json({ type: "closing", content: CLOSING_REPLY });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  // BYOK：只使用使用者在「設定」頁輸入、由瀏覽器帶上來的 Key，不讀伺服器環境變數
+  const apiKey = request.headers.get("x-openai-key")?.trim();
   if (!apiKey) {
     return Response.json(
-      { error: "伺服器未設定 OPENAI_API_KEY，請在 .env.local 加入後重新啟動" },
-      { status: 500 },
+      { error: "尚未設定 OpenAI API Key，請先到「設定」頁輸入", code: "missing_key" },
+      { status: 401 },
     );
   }
 
@@ -107,9 +108,13 @@ ${description}
     // 頁面以純文字顯示，移除模型偶爾仍會輸出的 Markdown 粗體符號
     return Response.json({ type: "answer", content: reply.replace(/\*\*/g, "") });
   } catch (err) {
-    console.error(err);
+    // 只記錄狀態碼，避免把使用者的 Key 相關資訊寫進伺服器 log
+    console.error(err instanceof OpenAIError ? `OpenAI API error ${err.status}` : err);
     if (err instanceof OpenAIError && err.status === 401) {
-      return Response.json({ error: "OpenAI API Key 無效，請檢查 .env.local" }, { status: 401 });
+      return Response.json(
+        { error: "OpenAI API Key 無效，請到「設定」頁重新輸入", code: "invalid_key" },
+        { status: 401 },
+      );
     }
     if (err instanceof OpenAIError && err.status === 429) {
       return Response.json(
