@@ -4,6 +4,16 @@ const CHANGE_EVENT = "openai-api-key-change";
 
 export const API_KEY_HEADER = "X-OpenAI-Key";
 
+// 移除複製貼上時常夾帶的空白、全形空白與零寬字元
+export function normalizeApiKey(key: string) {
+  return key.replace(/[\s​-‍⁠﻿]/g, "");
+}
+
+// Key 會放在 HTTP 標頭送出，標頭只接受 ASCII，含中文或全形字元時 fetch 會直接失敗
+export function isValidApiKey(key: string) {
+  return /^[\x21-\x7E]+$/.test(key);
+}
+
 // 無痕模式或封鎖網站資料時 localStorage 可能丟出例外，一律視為沒有 Key
 export function getApiKey(): string | null {
   try {

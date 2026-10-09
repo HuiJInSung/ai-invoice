@@ -6,7 +6,9 @@ import { PAPER_SHADOW, PrimaryButton } from "../_components/ui";
 import {
   clearApiKey,
   getApiKey,
+  isValidApiKey,
   maskApiKey,
+  normalizeApiKey,
   setApiKey,
   subscribeApiKey,
 } from "../_components/api-key";
@@ -17,10 +19,11 @@ export default function SettingsPage() {
   const [visible, setVisible] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const trimmed = input.trim();
+  const trimmed = normalizeApiKey(input);
+  const invalid = trimmed !== "" && !isValidApiKey(trimmed);
 
   function save() {
-    if (!trimmed) return;
+    if (!trimmed || invalid) return;
     if (setApiKey(trimmed)) {
       setInput("");
       setStatus({ ok: true, text: "已儲存，現在可以開始諮詢了。" });
@@ -76,7 +79,11 @@ export default function SettingsPage() {
               {visible ? "隱藏" : "顯示"}
             </button>
           </div>
-          {trimmed && !trimmed.startsWith("sk-") && (
+          {invalid ? (
+            <p className="mt-2 text-xs text-stamp">
+              Key 只能包含英文、數字與符號，偵測到中文或全形字元，請確認輸入法為半形後重新貼上。
+            </p>
+          ) : trimmed && !trimmed.startsWith("sk-") && (
             <p className="mt-2 text-xs text-stamp">OpenAI API Key 通常以「sk-」開頭，請確認是否貼錯。</p>
           )}
 
@@ -96,7 +103,7 @@ export default function SettingsPage() {
                 移除 Key
               </button>
             )}
-            <PrimaryButton onClick={save} disabled={!trimmed}>
+            <PrimaryButton onClick={save} disabled={!trimmed || invalid}>
               儲存
             </PrimaryButton>
           </div>

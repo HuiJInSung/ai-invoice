@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
-import { API_KEY_HEADER, getApiKey, subscribeApiKey } from "../_components/api-key";
+import {
+  API_KEY_HEADER,
+  getApiKey,
+  isValidApiKey,
+  normalizeApiKey,
+  subscribeApiKey,
+} from "../_components/api-key";
 import {
   ClerkAvatar,
   PAPER_SHADOW,
@@ -36,7 +42,11 @@ export default function ConsultPage() {
     setError("");
     setKeyError(false);
     try {
-      const key = getApiKey();
+      const key = normalizeApiKey(getApiKey() ?? "");
+      if (key && !isValidApiKey(key)) {
+        setKeyError(true);
+        throw new Error("已儲存的 API Key 含有中文或全形字元，請到「設定」頁重新輸入");
+      }
       const res = await fetch("/invoice", {
         method: "POST",
         headers: {
